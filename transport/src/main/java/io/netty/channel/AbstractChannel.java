@@ -460,6 +460,11 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             return remoteAddress0();
         }
 
+        /**
+         * NioEventLoop启动入口
+         * @param eventLoop
+         * @param promise
+         */
         @Override
         public final void register(EventLoop eventLoop, final ChannelPromise promise) {
             ObjectUtil.checkNotNull(eventLoop, "eventLoop");
@@ -475,10 +480,12 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
 
             AbstractChannel.this.eventLoop = eventLoop;
 
+            //判断当前的线程是否是eventLoop中的线程，是就直接执行
             if (eventLoop.inEventLoop()) {
                 register0(promise);
             } else {
                 try {
+                    //创建NioEventLoop的线程并启动
                     eventLoop.execute(new Runnable() {
                         @Override
                         public void run() {

@@ -830,8 +830,10 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
 
     private void execute(Runnable task, boolean immediate) {
         boolean inEventLoop = inEventLoop();
+        //添加任务入队列
         addTask(task);
         if (!inEventLoop) {
+            //启动线程
             startThread();
             if (isShutdown()) {
                 boolean reject = false;
@@ -944,7 +946,9 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
 
     private static final long SCHEDULE_PURGE_INTERVAL = TimeUnit.SECONDS.toNanos(1);
 
+
     private void startThread() {
+        //线程未启动，则进行启动
         if (state == ST_NOT_STARTED) {
             if (STATE_UPDATER.compareAndSet(this, ST_NOT_STARTED, ST_STARTED)) {
                 boolean success = false;
@@ -980,9 +984,11 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
 
     private void doStartThread() {
         assert thread == null;
+        //这个executor为最开始创建EventLoop创建的
         executor.execute(new Runnable() {
             @Override
             public void run() {
+                //将线程同EventLoop绑定起来
                 thread = Thread.currentThread();
                 if (interrupted) {
                     thread.interrupt();
@@ -991,6 +997,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
                 boolean success = false;
                 updateLastExecutionTime();
                 try {
+                    //开始注册
                     SingleThreadEventExecutor.this.run();
                     success = true;
                 } catch (Throwable t) {
