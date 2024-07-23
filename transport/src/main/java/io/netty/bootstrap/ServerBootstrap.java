@@ -130,7 +130,9 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
 
     @Override
     void init(Channel channel) {
+        //设置option
         setChannelOptions(channel, newOptionsArray(), logger);
+        //设置attribute
         setAttributes(channel, newAttributesArray());
 
         ChannelPipeline p = channel.pipeline();
@@ -144,12 +146,13 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
         p.addLast(new ChannelInitializer<Channel>() {
             @Override
             public void initChannel(final Channel ch) {
+                //添加用户自定义的handler,即handler()设置的
                 final ChannelPipeline pipeline = ch.pipeline();
                 ChannelHandler handler = config.handler();
                 if (handler != null) {
                     pipeline.addLast(handler);
                 }
-
+                // 添加一个特殊的handler,用于接收新连接 TODO
                 ch.eventLoop().execute(new Runnable() {
                     @Override
                     public void run() {
