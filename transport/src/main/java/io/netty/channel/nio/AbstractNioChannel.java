@@ -415,7 +415,7 @@ public abstract class AbstractNioChannel extends AbstractChannel {
         }
 
         readPending = true;
-
+        //绑定端口后，告诉jdk selector对SelectionKey.OP_ACCEPT感兴趣，将其注册到selector
         final int interestOps = selectionKey.interestOps();
         if ((interestOps & readInterestOp) == 0) {
             selectionKey.interestOps(interestOps | readInterestOp);

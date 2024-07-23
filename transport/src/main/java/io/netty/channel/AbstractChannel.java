@@ -573,13 +573,14 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
 
             boolean wasActive = isActive();
             try {
+                //1.调用jdk底层绑定端口
                 doBind(localAddress);
             } catch (Throwable t) {
                 safeSetFailure(promise, t);
                 closeIfClosed();
                 return;
             }
-
+            //2.传播channelActive事件
             if (!wasActive && isActive()) {
                 invokeLater(new Runnable() {
                     @Override
