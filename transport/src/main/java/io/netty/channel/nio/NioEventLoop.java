@@ -500,10 +500,22 @@ public final class NioEventLoop extends SingleThreadEventLoop {
         }
     }
 
+    /**
+     * 这里其实就是在reactor线程中执行的，所以这里能保证的话，就是串行执行的
+     */
     @Override
     protected void run() {
         int selectCnt = 0;
         for (;;) {
+            //1.执行事件轮询
+            /**
+             * 轮询中断的条件
+             *  1.定时任务截止时间快到了。中断本地轮询
+             *  2.轮询过程中，发现有任务加入，终止本次轮询
+             *  3.被用户主动唤醒
+             *  4.检测到IO事件
+             */
+
             try {
                 int strategy;
                 try {
@@ -516,12 +528,14 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                         // fall-through to SELECT since the busy-wait is not supported with NIO
 
                     case SelectStrategy.SELECT:
+                        //如果有定时任务，则设置select的阻塞时间
                         long curDeadlineNanos = nextScheduledTaskDeadlineNanos();
                         if (curDeadlineNanos == -1L) {
                             curDeadlineNanos = NONE; // nothing on the calendar
                         }
                         nextWakeupNanos.set(curDeadlineNanos);
                         try {
+
                             if (!hasTasks()) {
                                 strategy = select(curDeadlineNanos);
                             }
@@ -550,6 +564,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                 if (ioRatio == 100) {
                     try {
                         if (strategy > 0) {
+                            //2.处理产生IO事件的channel
                             processSelectedKeys();
                         }
                     } finally {
@@ -566,6 +581,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                         ranTasks = runAllTasks(ioTime * (100 - ioRatio) / ioRatio);
                     }
                 } else {
+                    //执行任务
                     ranTasks = runAllTasks(0); // This will run the minimum number of tasks
                 }
 
@@ -575,6 +591,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                                 selectCnt - 1, selector);
                     }
                     selectCnt = 0;
+                    //没有任务需要处理，不需要执行事件轮询  即出现了select()空轮询，导致cpu100%
                 } else if (unexpectedSelectorWakeup(selectCnt)) { // Unexpected wakeup (unusual case)
                     selectCnt = 0;
                 }
@@ -627,6 +644,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
             // Rebuild the selector to work around the problem.
             logger.warn("Selector.select() returned prematurely {} times in a row; rebuilding Selector {}.",
                     selectCnt, selector);
+            //重建selector
             rebuildSelector();
             return true;
         }
@@ -646,6 +664,8 @@ public final class NioEventLoop extends SingleThreadEventLoop {
     }
 
     private void processSelectedKeys() {
+        //selectedKeys使用的是优化的方式的key,优化了添加的selectedKeys的性能
+        //该值设置在openSelector时设置的
         if (selectedKeys != null) {
             processSelectedKeysOptimized();
         } else {
@@ -716,8 +736,10 @@ public final class NioEventLoop extends SingleThreadEventLoop {
             final SelectionKey k = selectedKeys.keys[i];
             // null out entry in the array to allow to have it GC'ed once the Channel close
             // See https://github.com/netty/netty/issues/2363
+            //设置为空，防止内存不会受，造成内存泄露
             selectedKeys.keys[i] = null;
 
+            //jdk的channel和selector绑定时，并将netty的channel作为一个附属属性。在服务端channel注册那里体现
             final Object a = k.attachment();
 
             if (a instanceof AbstractNioChannel) {
@@ -727,7 +749,9 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                 NioTask<SelectableChannel> task = (NioTask<SelectableChannel>) a;
                 processSelectedKey(k, task);
             }
-
+            /**
+             * Netty这么做的目的应该是每隔256次连接断开，重新清理一下SelectionKeys，这相当于用批量删除替代了Selector原HashSet数据结构的删除
+             */
             if (needsToSelectAgain) {
                 // null out entries in the array to allow to have it GC'ed once the Channel close
                 // See https://github.com/netty/netty/issues/2363
@@ -784,6 +808,10 @@ public final class NioEventLoop extends SingleThreadEventLoop {
 
             // Also check for readOps of 0 to workaround possible JDK bug which may otherwise lead
             // to a spin loop
+            /**
+             * （1）对于boss NioEventLoop来说，轮询到的是连接事件，后续通过NioServerSocketChannel的Pipeline将连接交给一个worker NioEventLoop处理；
+             * （2）对于worker NioEventLoop来说，轮询到的是读写事件，后续通过NioSocketChannel的Pipeline将读取到的数据传递给每个ChannelHandler来处理。
+             */
             if ((readyOps & (SelectionKey.OP_READ | SelectionKey.OP_ACCEPT)) != 0 || readyOps == 0) {
                 unsafe.read();
             }

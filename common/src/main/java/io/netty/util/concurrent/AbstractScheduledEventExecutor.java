@@ -155,6 +155,7 @@ public abstract class AbstractScheduledEventExecutor extends AbstractEventExecut
         assert inEventLoop();
 
         ScheduledFutureTask<?> scheduledTask = peekScheduledTask();
+        //如果截止相对时间<=小于当前相对时间，则任务可以转移
         if (scheduledTask == null || scheduledTask.deadlineNanos() - nanoTime > 0) {
             return null;
         }
@@ -281,9 +282,12 @@ public abstract class AbstractScheduledEventExecutor extends AbstractEventExecut
     }
 
     private <V> ScheduledFuture<V> schedule(final ScheduledFutureTask<V> task) {
+        //优先队列是不是线程安全的，多线程访问情况下，会并发问题。
+        //1.如果在Reactor线程中，则直接往优先队列中添加任务（多生产单消费。当前在reactor线程中，保证其他定时任务在排队中）
         if (inEventLoop()) {
             scheduleFromEventLoop(task);
         } else {
+            //2.将线程加入到reactor的任务队列中去。保证添加任务到定时任务的优先队列时，能保证是线程安全的
             final long deadlineNanos = task.deadlineNanos();
             // task will add itself to scheduled task queue when run if not expired
             if (beforeScheduledTaskSubmitted(deadlineNanos)) {

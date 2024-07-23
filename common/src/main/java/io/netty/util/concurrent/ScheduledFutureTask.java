@@ -151,6 +151,7 @@ final class ScheduledFutureTask<V> extends PromiseTask<V> implements ScheduledFu
                 }
                 return;
             }
+            //表示是一次性任务
             if (periodNanos == 0) {
                 if (setUncancellableInternal()) {
                     V result = runTask();
@@ -161,9 +162,13 @@ final class ScheduledFutureTask<V> extends PromiseTask<V> implements ScheduledFu
                 if (!isCancelled()) {
                     runTask();
                     if (!executor().isShutdown()) {
+                        //2.scheduleAtFixedRate方法：传递的periodNanos为正数，表示以固定速度来执行任务，与任务执行的耗时无关。
+                        // 5s执行，10秒执行完的话，固定1s执行  那6s的时候已在执行，不用等到7秒后
                         if (periodNanos > 0) {
                             deadlineNanos += periodNanos;
                         } else {
+                            //3.scheduleWithFixedDelay：传递的periodNanos为负数，表示以固定的延时来执行任务，即每次任务执行完毕之后，隔相同的时间再次执行。
+                            //5s执行，10秒的时候执行完，固定延迟2秒。下次执行的话从7秒后执行
                             deadlineNanos = scheduledExecutor().getCurrentTimeNanos() - periodNanos;
                         }
                         if (!isCancelled()) {
