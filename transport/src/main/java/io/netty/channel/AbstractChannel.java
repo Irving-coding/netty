@@ -69,8 +69,11 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
      */
     protected AbstractChannel(Channel parent) {
         this.parent = parent;
+        //1.创建channel的唯一标识
         id = newId();
+        //2.创建safe
         unsafe = newUnsafe();
+        //3.ChannelHandler链表，用于处理或者拦截Channel的Inbound事件和outbound操作。
         pipeline = newChannelPipeline();
     }
 

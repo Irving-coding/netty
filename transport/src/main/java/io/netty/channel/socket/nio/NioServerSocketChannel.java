@@ -60,6 +60,7 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel
         try {
             ServerSocketChannel channel =
                     SelectorProviderUtil.newChannel(OPEN_SERVER_SOCKET_CHANNEL_WITH_FAMILY, provider, family);
+            //创建jdk领域的NioServerSocketChannel
             return channel == null ? provider.openServerSocketChannel() : channel;
         } catch (IOException e) {
             throw new ChannelException("Failed to open a socket.", e);
