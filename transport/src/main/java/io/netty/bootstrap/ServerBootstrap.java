@@ -224,9 +224,9 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
         @SuppressWarnings("unchecked")
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
             final Channel child = (Channel) msg;
-
+            //1.给新连接添加自定义channelHandler 其实就是ChildHandler(xx),其中xx为ChannelInitializer
             child.pipeline().addLast(childHandler);
-
+            //设置配置和属性
             setChannelOptions(child, childOptions, logger);
             setAttributes(child, childAttrs);
 
@@ -241,6 +241,7 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
             }
 
             try {
+                //绑定Reactor线程，即绑定workerGroup中的一个线程
                 childGroup.register(child).addListener(new ChannelFutureListener() {
                     @Override
                     public void operationComplete(ChannelFuture future) throws Exception {
