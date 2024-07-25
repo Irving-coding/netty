@@ -51,6 +51,9 @@ public abstract class AbstractNioChannel extends AbstractChannel {
             InternalLoggerFactory.getInstance(AbstractNioChannel.class);
 
     private final SelectableChannel ch;
+    /**
+     * 感兴趣的事件
+     */
     protected final int readInterestOp;
     volatile SelectionKey selectionKey;
     boolean readPending;
@@ -417,6 +420,8 @@ public abstract class AbstractNioChannel extends AbstractChannel {
         readPending = true;
         //绑定端口后，告诉jdk selector对SelectionKey.OP_ACCEPT感兴趣，将其注册到selector
         final int interestOps = selectionKey.interestOps();
+        //selectionKye中的interestOps如果和reaInterestOp，则设置为readInterestOp
+        //当读事件完成之后会自动再刚兴趣读事件，此时二者相同不需要重新设置
         if ((interestOps & readInterestOp) == 0) {
             selectionKey.interestOps(interestOps | readInterestOp);
         }

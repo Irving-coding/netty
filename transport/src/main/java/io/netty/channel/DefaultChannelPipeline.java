@@ -1306,6 +1306,9 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         }
     }
 
+    /**
+     * HeadContext节点继承的两个接口看，它既是一个ChannelHandlerContext（表明它本身就是ChannelPipeline中的一个节点），同时属于Inbound和Outbound类型的Handler。
+     */
     final class HeadContext extends AbstractChannelHandlerContext
             implements ChannelOutboundHandler, ChannelInboundHandler {
 
@@ -1363,11 +1366,14 @@ public class DefaultChannelPipeline implements ChannelPipeline {
 
         @Override
         public void read(ChannelHandlerContext ctx) {
+            //继续注册读事件到reactor线程
             unsafe.beginRead();
         }
 
         @Override
         public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
+            //HeadContext是Inbound也是Outbound，当进行cp.channel().writeAndFlush或者write,出站时最后都是会调用到这里。
+            //writeAndFlush是分别调用write()和flush()
             unsafe.write(msg, promise);
         }
 
@@ -1416,8 +1422,9 @@ public class DefaultChannelPipeline implements ChannelPipeline {
 
         @Override
         public void channelReadComplete(ChannelHandlerContext ctx) {
+            //传播读事件完成
             ctx.fireChannelReadComplete();
-
+            //重新设置对读事件的感兴趣通常是为了确保能够持续接收数据或根据特定的业务逻辑来处理数据。 Netty 在处理完读事件后会自动继续读取数据
             readIfIsAutoRead();
         }
 

@@ -147,8 +147,10 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
             boolean close = false;
             try {
                 do {
+                    //1.分配ByteBuf
                     byteBuf = allocHandle.allocate(allocator);
                     //NioByteUnsafe中的读被委托到外部类AbstractNioByteChannel。
+                    //2.读取数据到ByteBuf
                     allocHandle.lastBytesRead(doReadBytes(byteBuf));
                     if (allocHandle.lastBytesRead() <= 0) {
                         // nothing was read. release the buffer.
@@ -164,12 +166,13 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
 
                     allocHandle.incMessagesRead(1);
                     readPending = false;
-                    //将读数据进行传播，如果设置了ByteToMessageDecoder，会经过
+                    //3.触发pipeline读事件的传播
                     pipeline.fireChannelRead(byteBuf);
                     byteBuf = null;
                 } while (allocHandle.continueReading());
 
                 allocHandle.readComplete();
+                //将事件继续传播下去，还会继续向Reactor线程注册读事件，即调用readIfIsAutoRead()
                 pipeline.fireChannelReadComplete();
 
                 if (close) {
