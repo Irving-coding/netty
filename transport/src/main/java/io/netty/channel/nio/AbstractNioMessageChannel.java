@@ -76,6 +76,7 @@ public abstract class AbstractNioMessageChannel extends AbstractNioChannel {
             try {
                 try {
                     do {
+                        //NioMessageUnsafe中的读最后是委托到外部类NioServerSocketChannel
                         //1.创建NioSocketChannel
                         int localRead = doReadMessages(readBuf);
                         if (localRead == 0) {

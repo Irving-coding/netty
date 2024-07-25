@@ -942,6 +942,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             }
 
             try {
+                //将字节流写到TCP缓冲区，通过调用flush方法
                 doWrite(outboundBuffer);
             } catch (Throwable t) {
                 handleWriteError(t);

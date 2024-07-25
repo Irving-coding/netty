@@ -813,6 +813,8 @@ public final class NioEventLoop extends SingleThreadEventLoop {
              * （2）对于worker NioEventLoop来说，轮询到的是读写事件，后续通过NioSocketChannel的Pipeline将读取到的数据传递给每个ChannelHandler来处理。
              */
             if ((readyOps & (SelectionKey.OP_READ | SelectionKey.OP_ACCEPT)) != 0 || readyOps == 0) {
+                //一个是与连接的字节数据读写相关的NioByteUnsafe，
+                // 一个是与新连接建立操作相关的NioMessageUnsafe，委托NioServerSocketChannel进行读。
                 unsafe.read();
             }
         } catch (CancelledKeyException ignored) {
