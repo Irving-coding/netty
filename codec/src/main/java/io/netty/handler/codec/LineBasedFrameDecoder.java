@@ -109,12 +109,14 @@ public class LineBasedFrameDecoder extends ByteToMessageDecoder {
                 final int length = eol - buffer.readerIndex();
                 final int delimLength = buffer.getByte(eol) == '\r'? 2 : 1;
 
+                //行数据查长度超过单行最大长度限制，异常数据,丢弃
                 if (length > maxLength) {
                     buffer.readerIndex(eol + delimLength);
                     fail(ctx, length);
                     return null;
                 }
 
+                //取包的时候是否包括分隔符
                 if (stripDelimiter) {
                     frame = buffer.readRetainedSlice(length);
                     buffer.skipBytes(delimLength);
@@ -124,12 +126,18 @@ public class LineBasedFrameDecoder extends ByteToMessageDecoder {
 
                 return frame;
             } else {
+                //没有读取到分隔符，说明没有完整的数据
                 final int length = buffer.readableBytes();
                 if (length > maxLength) {
+                    //比如一条完整的数据为1234\r\n，但是现在进行拆包时，只拿到了部分。比如123，然后因为最大长度限制为2。这个数据就先跳过不处理。得到下次读取缓冲区的时候，再进行完整的1234\r\n一起丢弃掉
+                    //如果长度大于最大长度限制，则丢弃，但是这条数据还不完整。要将其后面的部分一起丢掉。
                     discardedBytes = length;
+                    //将都指针设置未写指针，将可读的部分快速跳过
                     buffer.readerIndex(buffer.writerIndex());
+                    //设置为丢弃模式
                     discarding = true;
                     offset = 0;
+                    //默认为false,安静丢掉数据
                     if (failFast) {
                         fail(ctx, "over " + discardedBytes);
                     }
@@ -138,15 +146,18 @@ public class LineBasedFrameDecoder extends ByteToMessageDecoder {
             }
         } else {
             if (eol >= 0) {
+                //上次的123的长度，将这次分隔符的位置，得到这次应该丢弃的完整数据
                 final int length = discardedBytes + eol - buffer.readerIndex();
                 final int delimLength = buffer.getByte(eol) == '\r'? 2 : 1;
                 buffer.readerIndex(eol + delimLength);
                 discardedBytes = 0;
                 discarding = false;
                 if (!failFast) {
+                    //坑爹，也只是告诉这次的数据过长而已，还有其他啥表示么？
                     fail(ctx, length);
                 }
             } else {
+                //没有分割符，继续累加长度
                 discardedBytes += buffer.readableBytes();
                 buffer.readerIndex(buffer.writerIndex());
                 // We skip everything in the buffer, we need to set the offset to 0 again.

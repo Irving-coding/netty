@@ -285,8 +285,10 @@ public abstract class ByteToMessageDecoder extends ChannelInboundHandlerAdapter 
             CodecOutputList out = CodecOutputList.newInstance();
             try {
                 first = cumulation == null;
+                //1.累加数据
                 cumulation = cumulator.cumulate(ctx.alloc(),
                         first ? Unpooled.EMPTY_BUFFER : cumulation, (ByteBuf) msg);
+                //2.将累加的数据传递给业务进行拆包
                 callDecode(ctx, cumulation, out);
             } catch (DecoderException e) {
                 throw e;
@@ -294,9 +296,11 @@ public abstract class ByteToMessageDecoder extends ChannelInboundHandlerAdapter 
                 throw new DecoderException(e);
             } finally {
                 try {
+                    //3.清理字节容器
                     if (cumulation != null && !cumulation.isReadable()) {
                         numReads = 0;
                         try {
+                            //业务进行拆包处理，只是从字节容器中读取了数据，但是空间还是被保存下来。而字节容器累加数据的时候都是加到尾部，若不进行清理，会导致oom
                             cumulation.release();
                         } catch (IllegalReferenceCountException e) {
                             //noinspection ThrowFromFinallyBlock
@@ -310,11 +314,15 @@ public abstract class ByteToMessageDecoder extends ChannelInboundHandlerAdapter 
                         // We did enough reads already try to discard some bytes, so we not risk to see a OOME.
                         // See https://github.com/netty/netty/issues/4275
                         numReads = 0;
+                       //如果连续读取16次（discardAfterReads的默认值），字节容器中仍然有未被业务拆包器读取的数据，那么就做一次压缩，把有效数据段整体移到容器首部。
+                        //即读取好多次数据都没能拆包进行处理，那就先把已经处理读完的数据，给清空掉
+                        //比如 1234|23454444444|3456 把1234已经读取部分给移除掉，腾出空间来。
                         discardSomeReadBytes();
                     }
 
                     int size = out.size();
                     firedChannelRead |= out.insertSinceRecycled();
+                    //4.将业务数据包传递给业务处理器处理 即out就是业务数据包
                     fireChannelRead(ctx, out, size);
                 } finally {
                     out.recycle();
@@ -464,7 +472,7 @@ public abstract class ByteToMessageDecoder extends ChannelInboundHandlerAdapter 
                         break;
                     }
                 }
-
+                //记录容器中有多少字节待拆
                 int oldInputLength = in.readableBytes();
                 decodeRemovalReentryProtection(ctx, in, out);
 
@@ -476,10 +484,13 @@ public abstract class ByteToMessageDecoder extends ChannelInboundHandlerAdapter 
                     break;
                 }
 
+                //out不为空说明读取并解码成了对象
                 if (out.isEmpty()) {
+                    //拆包器未读取任何数据  decodeRemovalReentryProtection正常要读走数据
                     if (oldInputLength == in.readableBytes()) {
                         break;
                     } else {
+                        //读取到部分数据，不足以解码完成，还需要继续
                         continue;
                     }
                 }

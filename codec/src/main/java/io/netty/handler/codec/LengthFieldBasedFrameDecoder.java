@@ -401,7 +401,7 @@ public class LengthFieldBasedFrameDecoder extends ByteToMessageDecoder {
             if (discardingTooLongFrame) {
                 discardingTooLongFrame(in);
             }
-
+            //可读取数据小于数据长度域数据，直接返回
             if (in.readableBytes() < lengthFieldEndOffset) {
                 return null;
             }
