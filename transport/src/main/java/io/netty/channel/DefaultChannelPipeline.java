@@ -198,10 +198,11 @@ public class DefaultChannelPipeline implements ChannelPipeline {
     public final ChannelPipeline addLast(EventExecutorGroup group, String name, ChannelHandler handler) {
         final AbstractChannelHandlerContext newCtx;
         synchronized (this) {
+            //1.判断是否重复的handler
             checkMultiplicity(handler);
-
+            //2.创建新的节点
             newCtx = newContext(group, filterName(name, handler), handler);
-
+            //3.添加节点
             addLast0(newCtx);
 
             // If the registered is false it means that the channel was not registered on an eventLoop yet.
@@ -219,6 +220,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
                 return this;
             }
         }
+        //4.回调用户的方法，通知handler已经添加
         callHandlerAdded0(newCtx);
         return this;
     }
@@ -594,6 +596,8 @@ public class DefaultChannelPipeline implements ChannelPipeline {
     private static void checkMultiplicity(ChannelHandler handler) {
         if (handler instanceof ChannelHandlerAdapter) {
             ChannelHandlerAdapter h = (ChannelHandlerAdapter) handler;
+            //如果非共享的，但是已经被添加到其他的pipeline了，就能重复执行添加
+            //即便Handler是线程安全，设置成了单例，如果不设置@Shareable注解标识的话，就会报这个错
             if (!h.isSharable() && h.added) {
                 throw new ChannelPipelineException(
                         h.getClass().getName() +
