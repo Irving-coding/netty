@@ -1292,11 +1292,17 @@ public class DefaultChannelPipeline implements ChannelPipeline {
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+            /**
+             * 一般用户没有自行定义异常处理，就会在在这里处理打印进行提醒
+             */
             onUnhandledInboundException(cause);
         }
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
+            /**
+             * 入站的尾部。正常情况下不会走到这里。走到这里的话，一般说明数据没有被自定义的handler处理完
+             */
             onUnhandledInboundMessage(ctx, msg);
         }
 
@@ -1405,8 +1411,9 @@ public class DefaultChannelPipeline implements ChannelPipeline {
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) {
+            //激活调用
             ctx.fireChannelActive();
-
+            //最终调用doBeginRead()
             readIfIsAutoRead();
         }
 
