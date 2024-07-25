@@ -444,6 +444,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
                     ((ChannelInboundHandler) handler).channelRead(this, msg);
                 }
             } catch (Throwable t) {
+                //异常捕获，交由context对应的handler处理，并进行传播处理。
                 invokeExceptionCaught(t);
             }
         } else {
@@ -941,6 +942,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
                 ((ChannelOutboundHandler) handler).flush(this);
             }
         } catch (Throwable t) {
+            //出站异常传播
             invokeExceptionCaught(t);
         }
     }
