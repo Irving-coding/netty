@@ -113,6 +113,7 @@ public final class ChannelOutboundBuffer {
      * the message was written.
      */
     public void addMessage(Object msg, int size, ChannelPromise promise) {
+        //Entry里包含了待写出ByteBuf及消息回调promise
         Entry entry = Entry.newInstance(msg, size, total(msg), promise);
         if (tailEntry == null) {
             flushedEntry = null;
@@ -300,6 +301,7 @@ public final class ChannelOutboundBuffer {
             } else {
                 ReferenceCountUtil.safeRelease(msg);
             }
+            //执行回调处理
             safeSuccess(promise);
             decrementPendingOutboundBytes(size, false, true);
         }
@@ -380,6 +382,7 @@ public final class ChannelOutboundBuffer {
                     progress(readableBytes);
                     writtenBytes -= readableBytes;
                 }
+                //删除该节点
                 remove();
             } else { // readableBytes > writtenBytes
                 if (writtenBytes != 0) {

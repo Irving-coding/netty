@@ -879,6 +879,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
 
             int size;
             try {
+                //非ByteBuf对象和FileRegion过滤，把所有的非直接内存转换成直接内存DirectBuffer
                 msg = filterOutboundMessage(msg);
                 size = pipeline.estimatorHandle().size(msg);
                 if (size < 0) {
@@ -892,7 +893,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 }
                 return;
             }
-
+            //将要写入信息加入到单向链表中
             outboundBuffer.addMessage(msg, size, promise);
         }
 
@@ -904,7 +905,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             if (outboundBuffer == null) {
                 return;
             }
-
+            //一次性将unflushEntity的数据刷新到socket缓冲区
             outboundBuffer.addFlush();
             flush0();
         }

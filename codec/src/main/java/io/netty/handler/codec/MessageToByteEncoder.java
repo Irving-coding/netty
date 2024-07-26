@@ -99,7 +99,7 @@ public abstract class MessageToByteEncoder<I> extends ChannelOutboundHandlerAdap
     public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
         ByteBuf buf = null;
         try {
-            //如果信息对象的类型和当前处理类的泛型类型一样，则encode处理，将对象转成数据流
+            //判断当前Handler是否能处理写入的消息
             if (acceptOutboundMessage(msg)) {
                 @SuppressWarnings("unchecked")
                 I cast = (I) msg;
@@ -107,17 +107,20 @@ public abstract class MessageToByteEncoder<I> extends ChannelOutboundHandlerAdap
                 try {
                     encode(ctx, cast, buf);
                 } finally {
+                    //自定义Java对象转换成ByteBuf,对象无用，需要自己手动释放掉
                     ReferenceCountUtil.release(cast);
                 }
-
+                //如果buf中写入数据，就将数据传入到下个节点
                 if (buf.isReadable()) {
                     ctx.write(buf, promise);
                 } else {
+                    //否则释放buf
                     buf.release();
                     ctx.write(Unpooled.EMPTY_BUFFER, promise);
                 }
                 buf = null;
             } else {
+                //如果当前handler无法处理，就直接将传个下一节点处理
                 ctx.write(msg, promise);
             }
         } catch (EncoderException e) {
