@@ -92,7 +92,7 @@ public abstract class AbstractNioMessageChannel extends AbstractNioChannel {
                 } catch (Throwable t) {
                     exception = t;
                 }
-                //绑定并设置 NioSocketChannel
+                //绑定并设置 NioSocketChannel，readBuf放的就是NioSocketChannel
                 int size = readBuf.size();
                 for (int i = 0; i < size; i ++) {
                     readPending = false;
